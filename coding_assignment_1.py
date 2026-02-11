@@ -1,1 +1,6 @@
-print('this and that and this and that')
+num = 10
+while True:          
+    if num < 7:
+        break
+    print (num)
+    num -= 1
