@@ -1,0 +1,3 @@
+import numpy as np # only reqired for examples using np.* methods (but not indexing & slicing)
+import soundfile as sf
+
