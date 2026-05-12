@@ -11,6 +11,8 @@ Make sure you you put the following line into your terminal (if you don't alread
     pip install numpy soundfile sounddevice
 To play "Twinke Twinkle Little Star", input the following as your MIDI values (and liiiiike 60bpm)
     60 60 67 67 69 69 67 0 65 65 64 64 62 62 60 0
+To play MORE
+    66 0 66 0 66 68 69 0 68 69 71 0 69 68 66 0 66 0 66 68 69 0 73 0 71 69 68 0 0 0
 TODO: 
     Have user input array for the duration of each note ! 
 """
@@ -70,7 +72,7 @@ class Synthesizer:
     
 # the "very-important-methods" section! ----------------------------------------------------------------------------------------------------------------------
     
-    def oscillator (self, frequency, numSamples, numHarmonics = 20):
+    def oscillator (self, frequency, numSamples, numHarmonics = 10):
         """
          welp this is an additive sawtooth oscilator... :)
          this creates a sine wave for ONE NOTE AT A TIME 
