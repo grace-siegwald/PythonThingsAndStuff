@@ -5,22 +5,15 @@ Created on Wed Apr 22 11:36:58 2026
 
 @author: grace.siegwald
 """
-
-
 """
-
-First, the user should be prompted to input a melody as a comma-separated list of MIDI note numbers... 
-
-Second, the user should be prompted to input the melody's tempo in BPM (beats per minutes) as a single float.
-To keep it simple, consider each note's duration as equivalent to a single beat.
-
+NOTE:
+Make sure you you put the following line into your terminal (if you don't already have the required libraries installed):
+    pip install numpy soundfile sounddevice
+To play "Twinke Twinkle Little Star", input the following as your MIDI values (and liiiiike 60bpm)
+    60 60 67 67 69 69 67 0 65 65 64 64 62 62 60 0
 TODO: 
-    Have user input array for the duration of each note !
-    
+    Have user input array for the duration of each note ! 
 """
-
-
-
 
 import numpy as np 
 import soundfile as sf
@@ -28,12 +21,24 @@ import sounddevice as sd
 
 class Synthesizer:
 
-    def __init__(self, sampleRate = 44100):
-        self.sampleRate = sampleRate
+    def __init__(self):
+        self.sampleRate = 44100
         
-        
-        
-# the "thing-to-thing" section! --------------------------------------------------------------------------------------------------
+        # asking the user for all their inputs and such and things 
+        midiInput = input('\nEnter the MIDI values you would like to use beautfiul\n')
+        durationInput = input('\nALSO input what duration you want each of those notes to be! btw here is what u entered :D\n'
+                                + f'{midiInput}\n')
+        bpm = float(input('\nNOW input what bpm you want it to beeeee!\n'))
+
+        midiNotes = np.array(midiInput.split(), dtype=int) # the string.split(with no arguments) splits the string at each empty space
+        self.duration = np.array(durationInput.split(), dtype=int)
+
+        audio = self.melody(midiNotes, bpm)
+
+        self.playPrompt(audio)
+        self.savePrompt(audio)
+
+# the "convert thing-to-thing" section! ------------------------------------------------------------------------------------------------------------------------
         
     def midiToFrequency(self, midiNote):
         """
@@ -44,6 +49,7 @@ class Synthesizer:
         else:
             frequency = 440.0 * (2 ** ((midiNote - 69) / 12))
             return frequency
+        
     def bpmToSeconds (self, bpm):
         """
          Here is where we convert the user's inputed BPM to duration of one BEAT in seconds !
@@ -53,6 +59,7 @@ class Synthesizer:
         else:
             seconds = 60.0 / bpm
             return seconds
+        
     def secondsToSamples (self, seconds):
         """
          Anddddd here we convert those beats in seconds to number of SAMPLES !
@@ -61,8 +68,7 @@ class Synthesizer:
         return self.numSamples
     
     
-# the "very-important-methods" section! ------------------------------------------------------------------------------------------
-    
+# the "very-important-methods" section! ----------------------------------------------------------------------------------------------------------------------
     
     def oscillator (self, frequency, numSamples, numHarmonics = 20):
         """
@@ -91,15 +97,16 @@ class Synthesizer:
          attackRatio is the precentage of the note we fade in on (so .1 is 10%)
          ecayRatio is the same thing on the other end of the note !
         """
-        envelope = np.ones(numSamples) # I like to think of this as a "blank canvas" array of just 1's, same size as numSamples
+        env = np.ones(numSamples) # I like to think of this as a "blank canvas" array of just 1's, same size as numSamples
         attackSamples = int(numSamples * attackRatio) # finding the duration of the attack (and decay) as samples
         decaySamples = int(numSamples * decayRatio)
         
         # these are slicing at the coresponding points (beginning and end) and creating that fade with linspace() evenly space thingy
-        envelope[:attackSamples] = np.linspace(0, 1, attackSamples) 
-        envelope[-decaySamples:] = np.linspace(1, 0, decaySamples)
+        env[:attackSamples] = np.linspace(0, 1, attackSamples) 
+        env[-decaySamples:] = np.linspace(1, 0, decaySamples)
+        return env
     
-    def note(self, frequency, numSamples):
+    def note(self, frequency, numSamples): # Inheritence, perhaps? Each note HAS a frequency and a number of samples :)
         """
          This is where we actually form each note we are making! wow so exciting! wow wow wow!!!
          a note is literally just: oscillator * envelope (i learned this from notes and magical google :)
@@ -109,36 +116,54 @@ class Synthesizer:
         envelope = self.envelope(numSamples)
         return oscilator * envelope
     
-    def melody():
+    def melody(self, midiNotes, bpm):
         """
          aaaaand here's the most exciting part: where we create the full melody based off the input MIDI list of notes!
          it after all that work were left with a single array... how fitting.... 
         """
-        
-        
-        
-# Initialize class and ask user for thier inputs on all the things
-synth = Synthesizer()
-midiInput = input('\nEnter the MIDI values you would like to use beautfiul!\n')
-durationInput = input('\nALSO input what duration you want each of those notes to be! btw here is what u entered :D\n'
-                 + f'{midiInput}\n')
-bpmInput = input('\nNOW input what bpm you want it to beeeee!\n')
+        # converting the bpm user's inputted bpm to seconds then to numSamples
+        # we love actually getting to use the methods we write :)
+        numSeconds = self.bpmToSeconds(bpm)
+        numSamples = self.secondsToSamples(numSeconds) # numSamples PER NOTE
 
-userMidiArray = np.array(midiInput.split(), dtype=int) # the string.split() function splits the 
-userDurationArray = np.array(durationInput.split(), dtype=int)
+        segments = np.array([]) # empty array, we love an empty array
+        for note in midiNotes: # for each note in the list of midiNotes...
+            frequency = self.midiToFrequency(note) # convert to frequency with our function
+            segments = np.append(segments, self.note(frequency, numSamples))
 
-frequencies = np.array([]) # empty array that we will add frequencies to
-for note in userMidiArray:
-    frequency = synth.midiToFrequency(note)
-    frequencies = np.append(frequencies, frequency)
+        return segments
 
-numFrequencies = np.size(frequencies)
-
-synth.secondsToSamples(synth.bpmToSeconds(int(bpmInput)))
+    def playPrompt(self, audio):
+        play = input('\nWould you like to play the melody? (YES or NO)\n').lower().strip()
+        if play == 'yes':
+            print('playing...')
+            sd.play(audio, self.sampleRate)
+            sd.wait() # this "Waits for play()/rec()/playrec() to be finished."
+            print('done!')
+            return
+        if play == 'no':
+            return
+        else:
+            print('thats not the correct input, buddy')
+            self.playPrompt(audio) # recursive call
     
-synth.oscillator(frequencies, numFrequencies)
-
+    def savePrompt(self, audio):
+        save = input('\nWould you like to save your masterpiece to a .wav file? (YES or NO)\n').lower().strip()
+        if save == 'yes':
+            fileName = input('Enter a file name (e.g. melody.wav):\n').strip()
+            sf.write(fileName, audio, self.sampleRate)
+            print(f'Saved to {fileName} !')
+            return
+        if save == 'no':
+            print('awwww well thanks for using me!')
+            return
+        else:
+            print('thats not the correct input, buddy')
+            self.savePrompt(audio) # recursive call
         
+# Initialize class
+synth = Synthesizer()
+
         
         
         
