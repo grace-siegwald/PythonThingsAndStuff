@@ -11,8 +11,6 @@ Make sure you you put the following line into your terminal (if you don't alread
     pip install numpy soundfile sounddevice
 To play "Twinke Twinkle Little Star", input the following as your MIDI values (and liiiiike 60bpm)
     60 60 67 67 69 69 67 0 65 65 64 64 62 62 60 0
-To play MORE
-    66 0 66 0 66 68 69 0 68 69 71 0 69 68 66 0 66 0 66 68 69 0 73 0 71 69 68 0 0 0
 TODO: 
     Have user input array for the duration of each note ! 
 """
@@ -25,20 +23,16 @@ class Synthesizer:
 
     def __init__(self):
         self.sampleRate = 44100
-        
+
         # asking the user for all their inputs and such and things 
-        midiInput = input('\nEnter the MIDI values you would like to use beautfiul\n')
-        durationInput = input('\nALSO input what duration you want each of those notes to be! btw here is what u entered :D\n'
-                                + f'{midiInput}\n')
-        bpm = float(input('\nNOW input what bpm you want it to beeeee!\n'))
+        midiNotes = self.midiInput()
+        bpm = self.bpmInput()
 
-        midiNotes = np.array(midiInput.split(), dtype=int) # the string.split(with no arguments) splits the string at each empty space
-        self.duration = np.array(durationInput.split(), dtype=int)
-
+        # creating the actual audio output array yipeee !
         audio = self.melody(midiNotes, bpm)
 
-        self.playPrompt(audio)
-        self.savePrompt(audio)
+        self.play(audio)
+        self.save(audio)
 
 # the "convert thing-to-thing" section! ------------------------------------------------------------------------------------------------------------------------
         
@@ -46,8 +40,9 @@ class Synthesizer:
         """
          Here is where we convert the usere's MIDI note to a Frequency in Hz !
         """
-        if ( midiNote > 127 or midiNote < 0 ):
-            return ValueError(f'Your MIDI note {midiNote} is out of range (0–127), silly!')
+        if ( midiNote < 0 ):
+            frequency = 0
+            return frequency
         else:
             frequency = 440.0 * (2 ** ((midiNote - 69) / 12))
             return frequency
@@ -56,11 +51,8 @@ class Synthesizer:
         """
          Here is where we convert the user's inputed BPM to duration of one BEAT in seconds !
         """
-        if (bpm <= 0):
-            return ValueError('Your BPM must be a positive number, silly!')
-        else:
-            seconds = 60.0 / bpm
-            return seconds
+        seconds = 60.0 / bpm
+        return seconds
         
     def secondsToSamples (self, seconds):
         """
@@ -97,7 +89,7 @@ class Synthesizer:
         """
          the envelope we apply to each note with a LINEAR attack and decay (what were applying to the begining and end of each "note")
          attackRatio is the precentage of the note we fade in on (so .1 is 10%)
-         ecayRatio is the same thing on the other end of the note !
+         decayRatio is the same thing on the other end of the note !
         """
         env = np.ones(numSamples) # I like to think of this as a "blank canvas" array of just 1's, same size as numSamples
         attackSamples = int(numSamples * attackRatio) # finding the duration of the attack (and decay) as samples
@@ -128,31 +120,78 @@ class Synthesizer:
         numSeconds = self.bpmToSeconds(bpm)
         numSamples = self.secondsToSamples(numSeconds) # numSamples PER NOTE
 
-        segments = np.array([]) # empty array, we love an empty array
+        audio = np.array([]) # empty array, we love an empty array
         for note in midiNotes: # for each note in the list of midiNotes...
             frequency = self.midiToFrequency(note) # convert to frequency with our function
-            segments = np.append(segments, self.note(frequency, numSamples))
+            audio = np.append(audio, self.note(frequency, numSamples))
 
-        return segments
+        return audio
+    
+# the "getting-user-input" section! ----------------------------------------------------------------------------------------------------------------------
 
-    def playPrompt(self, audio):
-        play = input('\nWould you like to play the melody? (YES or NO)\n').lower().strip()
+    def midiInput(self):
+        """
+         all sorts of shenanigins with getting user input
+         it does whatever is in the 'except' block if the 'try' raises a value or overflow error 
+        """
+        _midiInput = input('\nEnter the MIDI values you would like to use beautfiul\n')
+        try: # this is what happens when the user puts in a valid input
+            midiNotes = np.array(_midiInput.split(), dtype=int) # the string.split(with no arguments) splits the string at each empty space
+            for note in midiNotes:
+                if (note > 127):
+                    raise ValueError('gotta be lower than 127!')
+        except (ValueError, OverflowError): # this is what happens when the user puts in a BAD INPUT: something that gives a value error or overflow error (huge number)
+            print('hmmmmm that input just aint gonna cut it buddy')
+            return self.midiInput() # recursive call
+        return midiNotes
+    
+    def bpmInput(self):
+        """
+         exact same idea as the midiInput function, read about it up there for more info !
+        """
+        _bpmInput = input('\nNOW input what bpm you want it to beeeee!\n')
+        try:
+            bpm = float(_bpmInput)
+            if bpm <= 0 or bpm > 10000:
+                raise ValueError("that bpm aint lookin too hot")
+        except(ValueError, OverflowError):
+            print('hmmmmm that input just aint gonna cut it buddy')
+            return self.bpmInput() # recursive call
+        return bpm
+
+    def durationInput(self):
+        """
+        TODO:
+            add duration of note thingy right HERE
+        durationInput = input('\nALSO input what duration you want each of those notes to be! btw here is what u entered :D\n'
+                                + f'{midiInput}\n')
+        self.duration = np.array(durationInput.split(), dtype=int)
+        """
+
+    def play(self, audio):
+        """
+         Here's where the actual playing of the audio happens
+        """
+        play = input('\nWould you like to play the melody? (YES or NO)\n').lower().strip() # lower() puts the input in lowercase, and strip() removes any dead space
         if play == 'yes':
             print('playing...')
             sd.play(audio, self.sampleRate)
-            sd.wait() # this "Waits for play()/rec()/playrec() to be finished."
+            sd.wait() # this "Waits for play() to be finished."
             print('done!')
             return
         if play == 'no':
-            return
-        else:
+            return # we return nothing because we are doing nothing !
+        else: # when the user inputs anything "incorrect", the function is recursively called, letting them try again
             print('thats not the correct input, buddy')
-            self.playPrompt(audio) # recursive call
+            self.play(audio) # recursive call
     
-    def savePrompt(self, audio):
+    def save(self, audio):
+        """
+         very similar to the play() function, read more about it up there
+        """
         save = input('\nWould you like to save your masterpiece to a .wav file? (YES or NO)\n').lower().strip()
         if save == 'yes':
-            fileName = input('Enter a file name (e.g. melody.wav):\n').strip()
+            fileName = input('Enter a file name (e.g. melody.wav):\n').strip() # strip() gets rid of any spaces / dead space
             sf.write(fileName, audio, self.sampleRate)
             print(f'Saved to {fileName} !')
             return
@@ -161,7 +200,7 @@ class Synthesizer:
             return
         else:
             print('thats not the correct input, buddy')
-            self.savePrompt(audio) # recursive call
+            self.save(audio) # recursive call
         
 # Initialize class
 synth = Synthesizer()
