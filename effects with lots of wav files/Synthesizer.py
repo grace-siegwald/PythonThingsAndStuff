@@ -67,7 +67,7 @@ class Synthesizer:
     def oscillator (self, frequency, numSamples, numHarmonics = 10):
         """
          welp this is an additive sawtooth oscilator... :)
-         this creates a sine wave for ONE NOTE AT A TIME 
+         this creates a waveform for ONE NOTE AT A TIME 
          isn't that so cool! math is so cool !!
         """
         # "t" is like the timestamps for each sample! blah blah blah
@@ -76,26 +76,26 @@ class Synthesizer:
         wave = np.zeros(numSamples)
 
         # Here is where the magic happens, creating the wave! 
-        # for each harmonic (i) in range of numHarmonics 
+        # for each harmonic (i) in range of numHarmonics (do the +1 thing )
         # which is set to 20 by defualt idk if that's good but ahhhh that's what I chose!
         for i in range(1, numHarmonics + 1):
             # tbh I do not understand how this equation works... but it's here! :)
             wave += (1.0 / i) * np.sin(2 * np.pi * frequency * i * t)
         
-        # this "normalizes" the array (the waveform) by dividing the entire thing by the largest number (np.max) and returns!
+        # this "normalizes" the array (the waveform) by dividing the entire thing by the largest number (np.max) and returns! (scaling the amplitude?)
         return wave / np.max(np.abs(wave)) 
     
-    def envelope(self, numSamples, attackRatio = .1, decayRatio = .1):
+    def envelope(self, numSamples, attackPercent = .1, decayPercent = .1):
         """
          the envelope we apply to each note with a LINEAR attack and decay (what were applying to the begining and end of each "note")
-         attackRatio is the precentage of the note we fade in on (so .1 is 10%)
-         decayRatio is the same thing on the other end of the note !
+         attackPercent is the precentage of the note we fade in on (so .1 is 10%)
+         decayPercent is the same thing on the other end of the note !
         """
         env = np.ones(numSamples) # I like to think of this as a "blank canvas" array of just 1's, same size as numSamples
-        attackSamples = int(numSamples * attackRatio) # finding the duration of the attack (and decay) as samples
-        decaySamples = int(numSamples * decayRatio)
+        attackSamples = int(numSamples * attackPercent) # finding the duration of the attack (and decay) as samples
+        decaySamples = int(numSamples * decayPercent)
         
-        # these are slicing at the coresponding points (beginning and end) and creating that fade with linspace() evenly space thingy
+        # these are slicing at the coresponding points (beginning and end) and creating that fade with the linspace() evenly space thingy
         env[:attackSamples] = np.linspace(0, 1, attackSamples) 
         env[-decaySamples:] = np.linspace(1, 0, decaySamples)
         return env
@@ -108,7 +108,8 @@ class Synthesizer:
         # wow we are simply creating an instance of each method, how object oriented of us! 
         oscilator = self.oscillator(frequency, numSamples) 
         envelope = self.envelope(numSamples)
-        return oscilator * envelope
+        n = oscilator * envelope
+        return n
     
     def melody(self, midiNotes, bpm):
         """
@@ -124,7 +125,6 @@ class Synthesizer:
         for note in midiNotes: # for each note in the list of midiNotes...
             frequency = self.midiToFrequency(note) # convert to frequency with our function
             audio = np.append(audio, self.note(frequency, numSamples))
-
         return audio
     
 # the "getting-user-input" section! ----------------------------------------------------------------------------------------------------------------------
@@ -159,15 +159,19 @@ class Synthesizer:
             return self.bpmInput() # recursive call
         return bpm
 
-    def durationInput(self):
+    def durationInput(self, midiInput):
         """
-        TODO:
-            add duration of note thingy right HERE
+        
+        """
         durationInput = input('\nALSO input what duration you want each of those notes to be! btw here is what u entered :D\n'
-                                + f'{midiInput}\n')
-        self.duration = np.array(durationInput.split(), dtype=int)
-        """
-
+                        + f'{midiInput}\n')
+        try:
+            durations = np.array(durationInput.split(), dtype=int)
+            for num in durations:
+                ghfdhajsk
+        except(ValueError, OverflowError):
+            print('hmmmmm that input just aint gonna cut it buddy')
+            return self.durationInput() # recursive call
     def play(self, audio):
         """
          Here's where the actual playing of the audio happens
